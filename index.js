@@ -45,11 +45,12 @@ const mqttClient = mqtt.connect(MQTT_URL, {
 
 mqttClient.on('connect', () => {
     console.log("✅ Connected to HiveMQ Cloud");
-    // Subscribing to multiple common variations to ensure we don't miss data
+    // Using '#' wildcard to catch all variations (case-sensitive) and sub-topics
     const topics = [
         "incubator/telemetry", 
-        "incubator/+/telemetry", 
-        "Incubator/telemetry"
+        "Incubator/#",
+        "incubator/telemetry",
+        "incubator/1/telemetry"
     ];
     mqttClient.subscribe(topics, () => {
         console.log(`📡 Subscribed to topics: ${topics.join(", ")}`);
@@ -61,9 +62,10 @@ mqttClient.on('error', (err) => {
 });
 
 mqttClient.on('message', async (topic, message) => {
+    console.log(`📩 Raw message received on [${topic}]: ${message.toString()}`);
     try {
         const data = JSON.parse(message.toString());
-        console.log(`📥 Received from ${topic}:`, JSON.stringify(data));
+        console.log(`📥 Parsed Data:`, JSON.stringify(data));
 
         const query = `
             INSERT INTO incubator_telemetry 
