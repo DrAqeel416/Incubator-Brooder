@@ -18,7 +18,7 @@ const mqttClient = mqtt.connect(MQTT_URL, {
 
 mqttClient.on('connect', () => {
     console.log("✅ Connected to HiveMQ Cloud");
-    mqttClient.subscribe("incubator/telemetry");
+    mqttClient.subscribe("incubator/telemetry"); // Ensure this matches your ESP32 topic
 });
 
 mqttClient.on('error', (err) => {
