@@ -45,7 +45,15 @@ const mqttClient = mqtt.connect(MQTT_URL, {
 
 mqttClient.on('connect', () => {
     console.log("✅ Connected to HiveMQ Cloud");
-    mqttClient.subscribe("incubator/+/telemetry"); // Wildcard to catch incubator/1/telemetry
+    // Subscribing to multiple common variations to ensure we don't miss data
+    const topics = [
+        "incubator/telemetry", 
+        "incubator/+/telemetry", 
+        "Incubator/telemetry"
+    ];
+    mqttClient.subscribe(topics, () => {
+        console.log(`📡 Subscribed to topics: ${topics.join(", ")}`);
+    });
 });
 
 mqttClient.on('error', (err) => {
@@ -55,7 +63,7 @@ mqttClient.on('error', (err) => {
 mqttClient.on('message', async (topic, message) => {
     try {
         const data = JSON.parse(message.toString());
-        console.log("Received Data:", data);
+        console.log(`📥 Received from ${topic}:`, JSON.stringify(data));
 
         const query = `
             INSERT INTO incubator_telemetry 
@@ -75,8 +83,10 @@ mqttClient.on('message', async (topic, message) => {
             data.heap ?? 0
         ];
 
+        console.log("📤 Attempting to insert into Supabase...");
         await pgClient.query(query, values);
+        console.log("✅ Data successfully saved to database.");
     } catch (err) {
-        console.error("Error processing message:", err);
+        console.error("❌ Error processing or inserting message:", err.message);
     }
 });
