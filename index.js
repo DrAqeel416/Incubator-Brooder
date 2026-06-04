@@ -79,7 +79,6 @@ mqttClient.on('message', async (topic, message) => {
         
         // Ensure numeric types are actually numbers and handle potential strings from MQTT
         const toNum = (val) => (val !== null && val !== undefined ? Number(val) : null);
-        const toInt = (val, fallback) => (val !== null && val !== undefined ? parseInt(val, 10) : fallback);
 
         const values = [
             data.ts || Math.floor(Date.now() / 1000), // Fallback to current time if ts is missing
@@ -87,10 +86,10 @@ mqttClient.on('message', async (topic, message) => {
             toNum(data.h), 
             toNum(data.sp), 
             toNum(data.rt), 
-            toInt(data.pwm, 0), 
-            toInt(data.mode, 0), 
-            toInt(data.up, 0), 
-            toInt(data.heap, 0)
+            toNum(data.pwm) || 0, 
+            toNum(data.mode) || 0, 
+            toNum(data.up) || 0, 
+            toNum(data.heap) || 0
         ];
 
         console.log("📤 Attempting to insert into Supabase...");
