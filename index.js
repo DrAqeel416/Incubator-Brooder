@@ -25,10 +25,16 @@ if (!PG_CONNECTION_STRING) {
     process.exit(1);
 }
 
+// Debug: Log connection attempt (hiding password)
+const connectionLog = PG_CONNECTION_STRING.replace(/:([^:@]+)@/, ':****@');
+console.log(`🔌 Initializing connection pool to: ${connectionLog}`);
+
 // Setup Postgres Pool (Highly recommended for long-running cloud services)
 const pool = new Pool({ 
     connectionString: PG_CONNECTION_STRING, 
-    ssl: { rejectUnauthorized: false } 
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 5000, // Don't hang forever
+    idleTimeoutMillis: 30000
 });
 
 pool.on('error', (err) => {
@@ -43,12 +49,11 @@ const mqttClient = mqtt.connect(MQTT_URL, {
 
 mqttClient.on('connect', () => {
     console.log("✅ Connected to HiveMQ Cloud");
+    // Optimized topic list to reduce overhead
     const topics = [
-        "incubator/#",     // Catch all lowercase variations
-        "Incubator/#",     // Catch all uppercase variations
+        "incubator/#",     
+        "Incubator/#",     
         "incubator/telemetry",
-        "Incubator/telemetry",
-        "incubator/1/telemetry",
         "#"                // Temporary broad subscription for debugging
     ];
     mqttClient.subscribe(topics, () => {
@@ -72,16 +77,20 @@ mqttClient.on('message', async (topic, message) => {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         `;
         
+        // Ensure numeric types are actually numbers and handle potential strings from MQTT
+        const toNum = (val) => (val !== null && val !== undefined ? Number(val) : null);
+        const toInt = (val, fallback) => (val !== null && val !== undefined ? parseInt(val, 10) : fallback);
+
         const values = [
             data.ts || Math.floor(Date.now() / 1000), // Fallback to current time if ts is missing
-            data.t ?? null, 
-            data.h ?? null, 
-            data.sp ?? null, 
-            data.rt ?? null, 
-            data.pwm ?? 0, 
-            data.mode ?? 0, 
-            data.up ?? 0, 
-            data.heap ?? 0
+            toNum(data.t), 
+            toNum(data.h), 
+            toNum(data.sp), 
+            toNum(data.rt), 
+            toInt(data.pwm, 0), 
+            toInt(data.mode, 0), 
+            toInt(data.up, 0), 
+            toInt(data.heap, 0)
         ];
 
         console.log("📤 Attempting to insert into Supabase...");
