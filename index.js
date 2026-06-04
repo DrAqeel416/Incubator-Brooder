@@ -6,8 +6,13 @@ require('dotenv').config();
 const MQTT_URL = `mqtts://${process.env.MQTT_USER}:${process.env.MQTT_PASS}@${process.env.MQTT_HOST}:8883`;
 const PG_CONNECTION_STRING = process.env.SUPABASE_DB_URL;
 
+if (!PG_CONNECTION_STRING) {
+    console.error("❌ ERROR: SUPABASE_DB_URL environment variable is not defined!");
+    process.exit(1);
+}
+
 // Setup Postgres Client
-const pgClient = new Client({ connectionString: PG_CONNECTION_STRING });
+const pgClient = new Client({ connectionString: PG_CONNECTION_STRING, ssl: { rejectUnauthorized: false } });
 pgClient.connect().then(() => console.log("Connected to Supabase DB")).catch(err => console.error(err));
 
 // Setup MQTT Client
