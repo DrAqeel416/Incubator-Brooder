@@ -1,5 +1,6 @@
 const mqtt = require('mqtt');
 const { Client } = require('pg');
+const http = require('http');
 const dns = require('dns');
 require('dotenv').config();
 
@@ -9,6 +10,15 @@ dns.setDefaultResultOrder('ipv4first');
 // Configurations from environment variables (Set these in Render Dashboard)
 const MQTT_URL = `mqtts://${process.env.MQTT_USER}:${process.env.MQTT_PASS}@${process.env.MQTT_HOST}:8883`;
 const PG_CONNECTION_STRING = process.env.SUPABASE_DB_URL ? process.env.SUPABASE_DB_URL.trim() : null;
+
+// Dummy HTTP Server to satisfy Render's health check
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('HiveMQ-Supabase Bridge is running\n');
+}).listen(PORT, () => {
+    console.log(` Health check server listening on port ${PORT}`);
+});
 
 if (!PG_CONNECTION_STRING) {
     console.error("❌ ERROR: SUPABASE_DB_URL environment variable is not defined!");
