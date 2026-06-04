@@ -1,5 +1,5 @@
 const mqtt = require('mqtt');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const http = require('http');
 const dns = require('dns');
 require('dotenv').config();
@@ -25,17 +25,15 @@ if (!PG_CONNECTION_STRING) {
     process.exit(1);
 }
 
-// Setup Postgres Client
-let pgClient;
-try {
-    pgClient = new Client({ connectionString: PG_CONNECTION_STRING, ssl: { rejectUnauthorized: false } });
-} catch (err) {
-    console.error("❌ ERROR: The SUPABASE_DB_URL provided is not a valid URL.");
-    console.error("Check for special characters in your password that might need encoding.");
-    console.error("Expected format: postgresql://postgres:your_password@db.your_id.supabase.co:5432/postgres");
-    process.exit(1);
-}
-pgClient.connect().then(() => console.log("Connected to Supabase DB")).catch(err => console.error(err));
+// Setup Postgres Pool (Highly recommended for long-running cloud services)
+const pool = new Pool({ 
+    connectionString: PG_CONNECTION_STRING, 
+    ssl: { rejectUnauthorized: false } 
+});
+
+pool.on('error', (err) => {
+    console.error('❌ Unexpected error on idle database client', err);
+});
 
 // Setup MQTT Client
 const mqttClient = mqtt.connect(MQTT_URL, {
@@ -45,12 +43,13 @@ const mqttClient = mqtt.connect(MQTT_URL, {
 
 mqttClient.on('connect', () => {
     console.log("✅ Connected to HiveMQ Cloud");
-    // Using '#' wildcard to catch all variations (case-sensitive) and sub-topics
     const topics = [
-        "incubator/telemetry", 
-        "Incubator/#",
+        "incubator/#",     // Catch all lowercase variations
+        "Incubator/#",     // Catch all uppercase variations
         "incubator/telemetry",
-        "incubator/1/telemetry"
+        "Incubator/telemetry",
+        "incubator/1/telemetry",
+        "#"                // Temporary broad subscription for debugging
     ];
     mqttClient.subscribe(topics, () => {
         console.log(`📡 Subscribed to topics: ${topics.join(", ")}`);
@@ -86,7 +85,7 @@ mqttClient.on('message', async (topic, message) => {
         ];
 
         console.log("📤 Attempting to insert into Supabase...");
-        await pgClient.query(query, values);
+        await pool.query(query, values);
         console.log("✅ Data successfully saved to database.");
     } catch (err) {
         console.error("❌ Error processing or inserting message:", err.message);
