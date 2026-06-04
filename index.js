@@ -35,7 +35,7 @@ const mqttClient = mqtt.connect(MQTT_URL, {
 
 mqttClient.on('connect', () => {
     console.log("✅ Connected to HiveMQ Cloud");
-    mqttClient.subscribe("incubator/telemetry"); // Ensure this matches your ESP32 topic
+    mqttClient.subscribe("incubator/+/telemetry"); // Wildcard to catch incubator/1/telemetry
 });
 
 mqttClient.on('error', (err) => {
@@ -55,14 +55,14 @@ mqttClient.on('message', async (topic, message) => {
         
         const values = [
             data.ts || Math.floor(Date.now() / 1000), // Fallback to current time if ts is missing
-            data.t, 
-            data.h, 
-            data.sp, 
-            data.rt, 
-            data.pwm, 
-            data.mode, 
-            data.up, 
-            data.heap
+            data.t ?? null, 
+            data.h ?? null, 
+            data.sp ?? null, 
+            data.rt ?? null, 
+            data.pwm ?? 0, 
+            data.mode ?? 0, 
+            data.up ?? 0, 
+            data.heap ?? 0
         ];
 
         await pgClient.query(query, values);
